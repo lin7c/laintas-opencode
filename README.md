@@ -7,14 +7,24 @@ same prices as Laintas's own clients.
 
 ## Install
 
-You need [OpenCode](https://opencode.ai) installed first — this plugin
-runs inside it:
+One command installs everything — including OpenCode itself if you don't
+have it yet (the pinned official build, downloaded from the OpenCode
+project's own releases), plus the Laintas plugin and provider config:
+
+macOS / Linux:
 
 ```bash
-curl -fsSL https://opencode.ai/install | bash   # OpenCode itself, if needed
 curl -fsSL https://raw.githubusercontent.com/lin7c/opencode-laintas/main/install.sh | bash
-opencode auth login   # pick "Laintas" → "Sign in with Laintas"
-opencode              # /models → choose a Laintas model
+opencode auth login   # pick "Laintas" -> "Sign in with Laintas"
+opencode              # /models -> choose a Laintas model
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/lin7c/opencode-laintas/main/install.ps1 | iex
+opencode auth login   # pick "Laintas" -> "Sign in with Laintas"
+opencode              # /models -> choose a Laintas model
 ```
 
 The script downloads the plugin into OpenCode's local plugin directory
