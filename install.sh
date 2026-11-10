@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Install the Laintas provider into OpenCode's global config, then sign in.
-# Safe to re-run: it merges into opencode.json and never touches other keys.
+# Install the Laintas provider into OpenCode, then sign in.
+# Downloads the plugin into OpenCode's local plugin directory and merges the
+# provider entry into the global config. Safe to re-run; never touches
+# other config keys. Requires: curl, node (OpenCode already needs node).
 set -euo pipefail
 
+PLUGIN_URL="https://raw.githubusercontent.com/lin7c/opencode-laintas/main/index.ts"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 CONFIG_FILE="$CONFIG_DIR/opencode.json"
-mkdir -p "$CONFIG_DIR"
+PLUGIN_FILE="$CONFIG_DIR/plugin/laintas.ts"
+
+mkdir -p "$CONFIG_DIR/plugin"
+echo "Downloading the Laintas plugin..."
+curl -fsSL "$PLUGIN_URL" -o "$PLUGIN_FILE"
 [ -f "$CONFIG_FILE" ] || echo '{}' > "$CONFIG_FILE"
 
 CONFIG_FILE="$CONFIG_FILE" node <<'NODE'
@@ -13,8 +20,6 @@ const fs = require('fs')
 const path = process.env.CONFIG_FILE
 const cfg = JSON.parse(fs.readFileSync(path, 'utf8'))
 cfg.$schema = cfg.$schema || 'https://opencode.ai/config.json'
-cfg.plugin = Array.isArray(cfg.plugin) ? cfg.plugin : []
-if (!cfg.plugin.includes('opencode-laintas')) cfg.plugin.push('opencode-laintas')
 cfg.provider = cfg.provider || {}
 cfg.provider.laintas = {
   npm: '@ai-sdk/openai-compatible',

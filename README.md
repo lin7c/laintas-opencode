@@ -13,12 +13,14 @@ opencode auth login   # pick "Laintas" → "Sign in with Laintas"
 opencode              # /models → choose a Laintas model
 ```
 
-Or by hand: add `"opencode-laintas"` to the `plugin` array of your
-`opencode.json`, plus a provider entry:
+The script downloads the plugin into OpenCode's local plugin directory
+(`~/.config/opencode/plugin/laintas.ts`) and merges a provider entry into
+your `opencode.json`. To do the same by hand, save `index.ts` from this
+repository as `~/.config/opencode/plugin/laintas.ts` and add the provider
+entry below to `opencode.json`:
 
 ```json
 {
-  "plugin": ["opencode-laintas"],
   "provider": {
     "laintas": {
       "npm": "@ai-sdk/openai-compatible",
