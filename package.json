@@ -1,0 +1,1 @@
+{"description":"Sign in to OpenCode with your Laintas account — no API key to copy. Models are billed to your Laintas balance.","exports":{".":"./index.ts"},"keywords":["opencode","opencode-plugin","laintas"],"license":"MIT","main":"index.ts","name":"opencode-laintas","peerDependencies":{"@opencode-ai/plugin":"*"},"type":"module","version":"0.1.0"}
