@@ -1,0 +1,74 @@
+name: Release
+
+# Builds the laintas-opencode single-file binaries for every platform with
+# packages/opencode/script/build.ts (Bun cross-compiles all targets from one
+# Linux runner) and publishes them as a GitHub Release with SHA-256 checksums.
+# Self-contained: uses only the default GITHUB_TOKEN, no upstream secrets.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build (e.g. v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: ver
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build all platform binaries
+        env:
+          OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
+          OPENCODE_RELEASE: "true"
+        run: bun ./packages/opencode/script/build.ts
+
+      - name: Stage release assets
+        run: |
+          mkdir -p release-assets
+          for bindir in packages/opencode/dist/*/bin; do
+            distname="$(basename "$(dirname "$bindir")")"
+            suffix="${distname#opencode-}"
+            for f in "$bindir"/*; do
+              ext=""
+              case "$(basename "$f")" in *.exe) ext=".exe" ;; esac
+              cp "$f" "release-assets/laintas-opencode-${suffix}${ext}"
+            done
+          done
+          cd release-assets
+          sha256sum laintas-opencode-* > checksums.txt
+          ls -la
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          files: release-assets/*
+          fail_on_unmatched_files: true
