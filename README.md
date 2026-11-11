@@ -1,129 +1,54 @@
-<p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
-    </picture>
-  </a>
-</p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
+# laintas-opencode
 
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
-</p>
+A terminal AI agent that ships with exactly one backend: **Laintas**.
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+`laintas-opencode` is a Laintas-maintained fork of [OpenCode](https://github.com/anomalyco/opencode) (MIT), pinned to upstream v1.19.5 with a small set of patch commits on top. All other vendors' model adapters, sign-in plugins and the models.dev catalog have been removed. What remains is the OpenCode terminal experience, wired exclusively to your Laintas account:
 
----
+- **Sign in with Laintas** — device-code login against `accounts.laintas.com`. No API key to copy or paste; the token is your login.
+- **Models from Laintas** — the model list is fetched live from `https://laintas.com/v1/models`, and usage is billed to your Laintas account balance.
+- **First run prompts you to sign in** — run `laintas-opencode` and approve the device code in your browser.
 
-### Installation
+It is a separate product from Laintas CLI (which is independently developed); this one is honestly a fork, and upstream attribution is preserved. See [FORK.md](FORK.md) for the base version, what was removed/added, and the maintenance model.
+
+## Install
+
+Download the binary for your platform from the [latest release](https://github.com/lin7c/laintas-opencode/releases/latest):
+
+| Platform | Asset |
+|---|---|
+| Linux x64 | `laintas-opencode-linux-x64` |
+| Linux arm64 | `laintas-opencode-linux-arm64` |
+| macOS (Apple Silicon) | `laintas-opencode-darwin-arm64` |
+| macOS (Intel) | `laintas-opencode-darwin-x64` |
+| Windows x64 | `laintas-opencode-windows-x64.exe` |
+
+Additional baseline (older CPUs without AVX2) and musl (Alpine) builds are attached to each release as well, plus a `checksums.txt` with SHA-256 sums for every asset.
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
-
-# Package managers
-npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+# Linux / macOS example
+chmod +x laintas-opencode-linux-x64
+mv laintas-opencode-linux-x64 ~/.local/bin/laintas-opencode
+laintas-opencode            # first run opens the Laintas sign-in flow
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+On Windows, rename the download to `laintas-opencode.exe`, put it somewhere on your `PATH`, and run `laintas-opencode` in a terminal.
 
-### Desktop App (BETA)
-
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+Verify your download against `checksums.txt`:
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
+sha256sum -c checksums.txt --ignore-missing
 ```
 
-#### Installation Directory
-
-The install script respects the following priority order for the installation path:
-
-1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.opencode/bin` - Default fallback
+## Usage
 
 ```bash
-# Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
+laintas-opencode auth login   # sign in with Laintas (device code)
+laintas-opencode              # start the TUI; /models picks what to run
+laintas-opencode run -m laintas/gpt-6-luna "say pong"
 ```
 
-### Agents
+Configuration, data and cache live under `laintas-opencode` directories (e.g. `~/.config/laintas-opencode`), separate from a stock OpenCode install. Self-update is disabled: new builds are published by Laintas as releases of this repository.
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
+## License
 
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
-
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://opencode.ai/docs/agents).
-
-### Documentation
-
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
-
-### Contributing
-
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on OpenCode
-
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
-
----
-
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+MIT, inherited from upstream OpenCode — see [LICENSE](LICENSE). Upstream copyright notices are retained.
