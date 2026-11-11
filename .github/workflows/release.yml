@@ -46,7 +46,10 @@ jobs:
       - name: Build all platform binaries
         env:
           OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
-          OPENCODE_RELEASE: "true"
+          # NOTE: do NOT set OPENCODE_RELEASE here. Upstream's build.ts treats
+          # it as "publish mode" and ends with its own `gh release upload`
+          # (needs GH_REPO + a gh login this workflow does not have). We build
+          # only; the softprops step below does the publishing.
         run: bun ./packages/opencode/script/build.ts
 
       - name: Stage release assets
