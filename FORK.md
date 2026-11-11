@@ -85,18 +85,34 @@ must not be conflated.
   which electron-updater's GitHub provider cannot resolve desktop updates
   from; the builder `publish` metadata already points at
   `lin7c/laintas-opencode` for when a dedicated desktop feed exists.
-- **Signing status:** desktop builds are currently **unsigned and not
-  notarized**. There is no Apple Developer ID or Windows code-signing
-  identity wired up yet, so macOS Gatekeeper and Windows SmartScreen will
-  warn on first launch, and the builder config's `notarize: true` will
-  fail the macOS job until credentials (or an unsigned mode) land in
-  Phase 2.
-- **Not yet done (Phase 2):** the packaged sidecar CLI is still fetched
-  from upstream npm in dev builds (`scripts/utils.ts`); rewiring it to
-  this fork's own CLI build, hiding the third-party provider-connect UI
-  that the shared app still contains, and renderer branding (splash,
-  changelog/docs URLs) are tracked in `desktop-recon.md` at the workspace
-  root.
+- **Signing status (Phase 2):** v1 desktop builds ship **unsigned and
+  unnotarized**. The builder config only signs/notarizes when
+  `LAINTAS_DESKTOP_SIGN=1` is set (it is not, anywhere); the Windows sign
+  hook self-skips without Azure Trusted Signing variables. macOS
+  Gatekeeper blocks first launch until the user allows the app manually,
+  and Windows SmartScreen warns. Code-signing certificates are a separate
+  decision, tracked outside this repo.
+- **Sidecar CLI (Phase 2):** every channel build (dev/beta/prod) bundles
+  this fork's own CLI build from `packages/opencode/dist` as
+  `resources/opencode-cli`; nothing is downloaded from npm anymore. The
+  desktop's default (v1) mode runs the embedded node server built from
+  this same tree, so the sidecar is only exercised by the opt-in v2
+  background-CLI mode (`OPENCODE_SIDECAR_V2=1`). Known gap: the v2 daemon
+  commands the desktop drives (`service status|start|get password`)
+  belong to upstream's next-generation CLI and are **not** implemented
+  by this fork's CLI, so v2 mode cannot manage a daemon until that
+  changes; v1 mode is unaffected. WSL support installs the CLI from the
+  `desktop-v*` GitHub release asset
+  `laintas-opencode-linux-x64-baseline` published by the same workflow.
+- **Provider UI (Phase 2):** the shared app's third-party provider entry
+  points are removed — the popular/custom rows in provider settings, the
+  connect buttons in the model dialogs, the "add more models" panels and
+  the opencode.ai/zen links. The connect dialog itself remains for the
+  Laintas device-code sign-in, and only ever lists the providers the
+  server exposes (Laintas). The notification icon is the local asterisk
+  artwork instead of an opencode.ai URL.
+- **Still open:** renderer branding leftovers (splash wordmark, changelog
+  and docs URLs) are tracked in `desktop-recon.md` at the workspace root.
 
 ## How to build
 
