@@ -423,7 +423,9 @@ export const ProvidersLoginCommand = effectCmd({
         yield* Prompt.autocomplete({
           message: "Select provider",
           maxItems: 8,
-          options: [...options, { value: "other", label: "Other" }],
+          // laintas-opencode: no "Other" manual provider entry; Laintas
+          // is the only provider that can be logged in to.
+          options,
         }),
       )
     }
