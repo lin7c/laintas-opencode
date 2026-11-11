@@ -1,0 +1,134 @@
+name: Desktop Release
+
+# DRAFT (Phase 1): builds the laintas-opencode desktop app (Electron) for
+# Windows, macOS and Linux and attaches the installers to a GitHub Release.
+# Modeled on upstream's desktop job in publish.yml (prepare -> build ->
+# electron-builder --publish never) and on this repo's release.yml
+# conventions (checkout v4, node 24, bun 1.4.4, softprops release upload,
+# only the default GITHUB_TOKEN).
+#
+# Known gaps, deliberately left for Phase 2:
+# - No code signing / notarization credentials are wired up. The macOS
+#   config requests notarization, so the macOS job is expected to fail at
+#   the signing step until APPLE_API_* secrets exist or the config grows
+#   an unsigned mode. Windows artifacts are unsigned (SmartScreen warns).
+# - The fork CLI binary built below is not yet copied into the desktop's
+#   resources/opencode-cli sidecar slot; that rewiring is Phase 2 work
+#   (see desktop-recon.md section 1).
+# - No SENTRY_* / VITE_SENTRY_* variables are set on purpose: the desktop
+#   must never report to the upstream Sentry project (desktop-recon.md
+#   section 3).
+# - The in-app auto-updater is disabled for v1 (see
+#   packages/desktop/src/main/constants.ts), so the latest*.yml files are
+#   uploaded for completeness only.
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Desktop release tag to build (e.g. desktop-v1.0.0)"
+        required: true
+        default: "desktop-v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: ver
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#desktop-v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm fakeroot
+
+      # The desktop embeds this repo's own CLI build (node server bundle via
+      # prebuild, native sidecar once Phase 2 lands the copy step).
+      - name: Build CLI from this repo
+        env:
+          OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
+        run: bun ./packages/opencode/script/build.ts
+
+      - name: Prepare desktop (stamp version)
+        working-directory: packages/desktop
+        env:
+          OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
+          OPENCODE_CHANNEL: prod
+        run: bun ./scripts/prepare.ts
+
+      - name: Build desktop
+        working-directory: packages/desktop
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
+          OPENCODE_CHANNEL: prod
+        run: bun run build
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        working-directory: packages/desktop
+        env:
+          OPENCODE_CHANNEL: prod
+        run: npx electron-builder --win --publish never --config electron-builder.config.ts
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        working-directory: packages/desktop
+        env:
+          OPENCODE_CHANNEL: prod
+          # No signing identity is provisioned yet; do not let
+          # electron-builder hunt for one. Notarization is still expected
+          # to fail until Phase 2 (see header comment).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --mac --publish never --config electron-builder.config.ts
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        working-directory: packages/desktop
+        env:
+          OPENCODE_CHANNEL: prod
+        run: npx electron-builder --linux --publish never --config electron-builder.config.ts
+
+      - name: Publish desktop release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          files: |
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.rpm
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/latest*.yml
+          fail_on_unmatched_files: true
