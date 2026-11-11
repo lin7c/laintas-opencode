@@ -41,7 +41,12 @@ export function DialogModel(props: { providerID?: string }) {
             description: provider.name,
             category,
             disabled: provider.id === "opencode" && model.id.includes("-nano"),
-            footer: model.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+            footer:
+              provider.id === "laintas" && typeof model.options?.laintasBadge === "string"
+                ? model.options.laintasBadge
+                : model.cost?.input === 0 && provider.id === "opencode"
+                  ? "Free"
+                  : undefined,
             onSelect: () => {
               onSelect(provider.id, model.id)
             },
@@ -79,7 +84,14 @@ export function DialogModel(props: { providerID?: string }) {
               : undefined,
             category: connected() ? provider.name : undefined,
             disabled: provider.id === "opencode" && model.includes("-nano"),
-            footer: info.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+            // Laintas models carry a picker badge (tier, laintas-model or
+            // Activated) in their options, set by the Laintas plugin.
+            footer:
+              provider.id === "laintas" && typeof info.options?.laintasBadge === "string"
+                ? info.options.laintasBadge
+                : info.cost?.input === 0 && provider.id === "opencode"
+                  ? "Free"
+                  : undefined,
             onSelect() {
               onSelect(provider.id, model)
             },
