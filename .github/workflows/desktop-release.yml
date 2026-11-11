@@ -58,11 +58,13 @@ jobs:
               packages/desktop/dist/*.blockmap
               packages/desktop/dist/latest*.yml
           - os: ubuntu-latest
+            # No *.blockmap: with the updater disabled the Linux targets
+            # emit none (the desktop-v1.0.1 publish step failed on the
+            # unmatched pattern).
             assets: |
               packages/desktop/dist/*.AppImage
               packages/desktop/dist/*.deb
               packages/desktop/dist/*.rpm
-              packages/desktop/dist/*.blockmap
               packages/desktop/dist/latest*.yml
               release-assets/laintas-opencode-linux-x64-baseline
     steps:
