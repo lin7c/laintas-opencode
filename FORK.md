@@ -38,6 +38,15 @@ must not be conflated.
     billing is settled against the user's Laintas account balance.
   - The model list is populated from `GET https://laintas.com/v1/models`
     for the signed-in account.
+  - **Model picker badges:** each model row in the TUI picker shows the
+    same badge as the Laintas web picker - the model's tier (e.g. `T2`),
+    `laintas-model` for models on Laintas GPUs, or `Activated` for models
+    served by the caller's own key. The facade passes the gateway's flags
+    through under a `laintas` key on each `/v1/models` entry; the plugin
+    derives the badge text and carries it in the model's `options`
+    (`laintasBadge`), the dialog renders it as the row footer, and the
+    plugin's request wrapper strips it from outgoing request bodies (the
+    AI SDK would otherwise spread provider options into the body).
 - **Rebrand:** the global app directory is `laintas-opencode`
   (config/data/cache/state), the built binary is named
   `laintas-opencode`, and CLI usage/descriptions use that name. Internal
