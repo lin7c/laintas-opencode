@@ -7,7 +7,6 @@ import { IconButton } from "@opencode-ai/ui/icon-button"
 import { List, type ListRef } from "@opencode-ai/ui/list"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Spinner } from "@opencode-ai/ui/spinner"
-import { Tag } from "@opencode-ai/ui/tag"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { DialogBody, DialogHeader, DialogTitle, DialogV2 } from "@opencode-ai/ui/v2/dialog-v2"
@@ -35,11 +34,9 @@ import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
-import { popularProviders, useProviders } from "@/hooks/use-providers"
-import { CustomProviderForm } from "./dialog-custom-provider"
+import { useProviders } from "@/hooks/use-providers"
 import { decode64 } from "@/utils/base64"
 
-const CUSTOM_ID = "_custom"
 type ConnectMethod = Extract<IntegrationMethod, { type: "key" | "oauth" }>
 
 export function useProviderConnectController(options: { onBack?: () => void } = {}) {
@@ -74,10 +71,7 @@ export const DialogConnectProvider: Component<{
   function Content() {
     return (
       <Switch>
-        <Match when={controller.selected() === CUSTOM_ID}>
-          <CustomProviderForm autofocus={!newLayout()} />
-        </Match>
-        <Match when={controller.selected() && controller.selected() !== CUSTOM_ID ? controller.selected() : undefined}>
+        <Match when={controller.selected() ? controller.selected() : undefined}>
           {(provider) => (
             <ProviderConnection
               provider={provider()}
@@ -160,16 +154,6 @@ function ProviderPicker(props: {
     return <ProviderPickerV2 directory={props.directory} onSelect={props.onSelect} onPrepare={props.onPrepare} />
   const providers = useProviders(() => props.directory?.())
   const language = useLanguage()
-  const popularGroup = () => language.t("dialog.provider.group.popular")
-  const otherGroup = () => language.t("dialog.provider.group.other")
-  const customLabel = () => language.t("settings.providers.tag.custom")
-  const note = (id: string) => {
-    if (id === "anthropic") return language.t("dialog.provider.anthropic.note")
-    if (id === "openai") return language.t("dialog.provider.openai.note")
-    if (id.startsWith("github-copilot")) return language.t("dialog.provider.copilot.note")
-    if (id === "opencode-go") return language.t("dialog.provider.opencodeGo.tagline")
-    return undefined
-  }
 
   return (
     <List
@@ -180,23 +164,10 @@ function ProviderPicker(props: {
       key={(x) => x?.id}
       items={() => {
         language.locale()
-        return [{ id: CUSTOM_ID, name: customLabel() }, ...providers.all().values()]
+        return [...providers.all().values()]
       }}
       filterKeys={["id", "name"]}
-      groupBy={(x) => (popularProviders.includes(x.id) ? popularGroup() : otherGroup())}
-      sortBy={(a, b) => {
-        if (a.id === CUSTOM_ID) return -1
-        if (b.id === CUSTOM_ID) return 1
-        if (popularProviders.includes(a.id) && popularProviders.includes(b.id))
-          return popularProviders.indexOf(a.id) - popularProviders.indexOf(b.id)
-        return a.name.localeCompare(b.name)
-      }}
-      sortGroupsBy={(a, b) => {
-        const popular = popularGroup()
-        if (a.category === popular && b.category !== popular) return -1
-        if (b.category === popular && a.category !== popular) return 1
-        return 0
-      }}
+      sortBy={(a, b) => a.name.localeCompare(b.name)}
       onSelect={(x) => {
         if (!x) return
         props.onSelect(x.id)
@@ -206,19 +177,6 @@ function ProviderPicker(props: {
         <div class="px-1.25 w-full flex items-center gap-x-3">
           <ProviderIcon data-slot="list-item-extra-icon" id={i.id} />
           <span>{i.name}</span>
-          <Show when={i.id === "opencode"}>
-            <div class="text-14-regular text-text-weak">{language.t("dialog.provider.opencode.tagline")}</div>
-          </Show>
-          <Show when={i.id === CUSTOM_ID}>
-            <Tag>{language.t("settings.providers.tag.custom")}</Tag>
-          </Show>
-          <Show when={i.id === "opencode"}>
-            <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
-          </Show>
-          <Show when={note(i.id)}>{(value) => <div class="text-14-regular text-text-weak">{value()}</div>}</Show>
-          <Show when={i.id === "opencode-go"}>
-            <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
-          </Show>
         </div>
       )}
     </List>
@@ -237,29 +195,17 @@ function ProviderPickerV2(props: {
     active: undefined as string | undefined,
     connecting: undefined as string | undefined,
   })
-  const featured = ["opencode", "opencode-go", "anthropic", "openai", "google", "openrouter", "vercel"]
-  const custom = () => ({ id: CUSTOM_ID, name: language.t("dialog.provider.custom.label") })
   const all = createMemo(() => {
     language.locale()
     const query = store.filter.trim().toLowerCase()
-    const values = [custom(), ...providers.all().values()]
+    const values = [...providers.all().values()]
     if (!query) return values
     return values.filter((provider) => `${provider.id} ${provider.name}`.toLowerCase().includes(query))
   })
-  const popular = createMemo(() =>
-    all()
-      .filter((provider) => featured.includes(provider.id))
-      .sort((a, b) => featured.indexOf(a.id) - featured.indexOf(b.id)),
-  )
-  const other = createMemo(() =>
-    all()
-      .filter((provider) => !featured.includes(provider.id))
-      .sort((a, b) => {
-        if (a.id === CUSTOM_ID) return -1
-        if (b.id === CUSTOM_ID) return 1
-        return a.name.localeCompare(b.name)
-      }),
-  )
+  // laintas-opencode: no provider is featured or promoted. Everything the
+  // server offers (only Laintas) is listed in the single unfeatured group.
+  const popular = createMemo(() => [] as ReturnType<typeof all>)
+  const other = createMemo(() => [...all()].sort((a, b) => a.name.localeCompare(b.name)))
   const rows = createMemo(() => [...popular(), ...other()])
   let picker: HTMLDivElement | undefined
   let search: HTMLInputElement | undefined
@@ -334,23 +280,6 @@ function ProviderPickerV2(props: {
                       >
                         <ProviderIcon id={provider.id} class="size-4 shrink-0 text-v2-icon-icon-base" />
                         <span class="min-w-0 truncate font-[530] text-v2-text-text-base">{provider.name}</span>
-                        <Show when={provider.id === "opencode" || provider.id === "opencode-go"}>
-                          <span class="min-w-0 truncate font-[440] text-v2-text-text-muted">
-                            {language.t(
-                              provider.id === "opencode"
-                                ? "dialog.provider.opencode.tagline"
-                                : "dialog.provider.opencodeGo.tagline",
-                            )}
-                          </span>
-                          <span class="flex h-4 shrink-0 items-center rounded-xs border-[0.5px] border-v2-border-border-base bg-v2-background-bg-layer-03 px-1 text-[11px] font-[530] leading-none tracking-[0.05px] text-v2-text-text-muted">
-                            {language.t("dialog.provider.tag.recommended")}
-                          </span>
-                        </Show>
-                        <Show when={provider.id === CUSTOM_ID}>
-                          <span class="flex h-4 shrink-0 items-center rounded-xs border-[0.5px] border-v2-border-border-base bg-v2-background-bg-layer-03 px-1 text-[11px] font-[530] leading-none tracking-[0.05px] text-v2-text-text-muted">
-                            {language.t("settings.providers.tag.custom")}
-                          </span>
-                        </Show>
                         <Show when={store.connecting === provider.id}>
                           <Spinner class="ml-auto size-4 shrink-0 text-v2-icon-icon-muted" />
                         </Show>
@@ -839,25 +768,7 @@ function ProviderConnection(props: {
     if (newLayout())
       return (
         <div class="flex flex-col gap-5 px-3 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-muted">
-          <Show
-            when={provider().id === "opencode"}
-            fallback={language.t("provider.connect.apiKey.description", { provider: provider().name })}
-          >
-            <div class="flex flex-col gap-5">
-              <div>{language.t("provider.connect.opencodeZen.line1")}</div>
-              <div>{language.t("provider.connect.opencodeZen.line2")}</div>
-              <div>
-                {language.t("provider.connect.opencodeZen.visit.prefix")}
-                <ExternalLink
-                  href="https://opencode.ai/zen"
-                  class="text-v2-text-text-base focus-visible:rounded-xs focus-visible:outline-2 focus-visible:outline-v2-border-border-focus"
-                >
-                  {language.t("provider.connect.opencodeZen.visit.link")}
-                </ExternalLink>
-                {language.t("provider.connect.opencodeZen.visit.suffix")}
-              </div>
-            </div>
-          </Show>
+          <div>{language.t("provider.connect.apiKey.description", { provider: provider().name })}</div>
           <form onSubmit={handleSubmit} class="flex flex-col items-start gap-5 self-stretch">
             <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
               {language.t("provider.connect.apiKey.label", { provider: provider().name })}
@@ -891,26 +802,9 @@ function ProviderConnection(props: {
 
     return (
       <div class="flex flex-col gap-6">
-        <Switch>
-          <Match when={provider().id === "opencode"}>
-            <div class="flex flex-col gap-4">
-              <div class="text-14-regular text-text-base">{language.t("provider.connect.opencodeZen.line1")}</div>
-              <div class="text-14-regular text-text-base">{language.t("provider.connect.opencodeZen.line2")}</div>
-              <div class="text-14-regular text-text-base">
-                {language.t("provider.connect.opencodeZen.visit.prefix")}
-                <ExternalLink href="https://opencode.ai/zen" tabIndex={-1}>
-                  {language.t("provider.connect.opencodeZen.visit.link")}
-                </ExternalLink>
-                {language.t("provider.connect.opencodeZen.visit.suffix")}
-              </div>
-            </div>
-          </Match>
-          <Match when={true}>
-            <div class="text-14-regular text-text-base">
-              {language.t("provider.connect.apiKey.description", { provider: provider().name })}
-            </div>
-          </Match>
-        </Switch>
+        <div class="text-14-regular text-text-base">
+          {language.t("provider.connect.apiKey.description", { provider: provider().name })}
+        </div>
         <form onSubmit={handleSubmit} class="flex flex-col items-start gap-4">
           <TextField
             autofocus={!newLayout()}
