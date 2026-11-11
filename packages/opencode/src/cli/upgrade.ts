@@ -21,7 +21,8 @@ export function shouldNotify(input: {
 export async function upgrade() {
   const config = await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.getGlobal()))
   if (config.autoupdate === false || Flag.OPENCODE_DISABLE_AUTOUPDATE) return
-  const latest = await Installation.latest(await Installation.method()).catch(() => {})
+  // laintas-opencode: no upstream update checks. Updates are managed by Laintas.
+  const latest = undefined as string | undefined
   if (!latest) return
   if (
     shouldNotify({

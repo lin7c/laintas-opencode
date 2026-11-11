@@ -292,93 +292,26 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
       }),
       // Reports the installed version when there's no OpenCode 1 update this install method can deliver,
       // so callers offer OpenCode 2 through the major upgrade instead.
-      latest: Effect.fn("Installation.latest")(function* (installMethod?: Method) {
-        const method = installMethod || (yield* result.method())
-        // Homebrew Core's opencode formula is OpenCode 2, so `brew upgrade` can't deliver an OpenCode 1 update.
-        if (method === "brew" && !(yield* getBrewFormula()).includes("/")) return InstallationVersion
-        return yield* Effect.gen(function* () {
-          const found = yield* npmLatest()
-          if (!isUpdate(InstallationVersion, found)) return InstallationVersion
-          if (method === "choco" && !(yield* chocoHas(found))) return InstallationVersion
-          return found
-        }).pipe(Effect.timeout("10 seconds"))
-      }, Effect.orDie),
+      latest: Effect.fn("Installation.latest")(function* () {
+        // laintas-opencode: updates are distributed by Laintas, never by
+        // checking upstream OpenCode package sources. Report the installed
+        // version so no caller ever sees (or installs) an upstream update.
+        return InstallationVersion
+      }),
       upgrade: Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
-        if (semver.valid(target) && semver.major(target) >= 2)
-          return yield* new UpgradeFailedError({
-            stderr: `OpenCode ${target} is OpenCode 2. Upgrade with \`opencode upgrade --major\` or see ${MAJOR_INSTRUCTIONS}`,
-          })
-        let upgradeResult: { code: number; stdout: string; stderr: string } | undefined
-        switch (m) {
-          case "curl":
-            upgradeResult = yield* upgradeCurl(target)
-            break
-          case "npm":
-            upgradeResult = yield* run(["npm", "install", "-g", `opencode-ai@${target}`])
-            break
-          case "pnpm":
-            upgradeResult = yield* run(["pnpm", "install", "-g", `opencode-ai@${target}`])
-            break
-          case "bun":
-            upgradeResult = yield* run(["bun", "install", "-g", `opencode-ai@${target}`])
-            break
-          case "yarn":
-            upgradeResult = yield* run(["yarn", "global", "add", `opencode-ai@${target}`])
-            break
-          case "brew": {
-            const formula = yield* getBrewFormula()
-            const env = { HOMEBREW_NO_AUTO_UPDATE: "1" }
-            if (!formula.includes("/"))
-              return yield* new UpgradeFailedError({
-                stderr: `Homebrew Core's opencode formula is OpenCode 2, so Homebrew can't install OpenCode ${target}. Upgrade with \`opencode upgrade --major\`, or reinstall from anomalyco/tap/opencode to stay on OpenCode 1.`,
-              })
-            const tap = yield* run(["brew", "tap", "anomalyco/tap"], { env })
-            if (tap.code !== 0) {
-              upgradeResult = tap
-              break
-            }
-            const repo = yield* text(["brew", "--repo", "anomalyco/tap"])
-            const dir = repo.trim()
-            if (dir) {
-              const pull = yield* run(["git", "pull", "--ff-only"], { cwd: dir, env })
-              if (pull.code !== 0) {
-                upgradeResult = pull
-                break
-              }
-            }
-            // The tap is updated shortly after npm, so a just-published release may not be installable yet.
-            const available = yield* tapVersion(formula)
-            if (!available || semver.major(available) !== semver.major(target) || semver.lt(available, target))
-              return yield* new UpgradeFailedError({
-                stderr: `Homebrew can't install OpenCode ${target} yet: ${formula} is at ${available ?? "an unknown version"}. Try again in a few minutes.`,
-              })
-            upgradeResult = yield* run(["brew", "upgrade", formula], { env })
-            break
-          }
-          case "choco":
-            upgradeResult = yield* run(["choco", "upgrade", "opencode", `--version=${target}`, "-y"])
-            break
-          case "scoop":
-            upgradeResult = yield* run(["scoop", "install", `opencode@${target}`])
-            break
-          default:
-            return yield* new UpgradeFailedError({ stderr: `Unknown installation method: ${m}` })
-        }
-        if (!upgradeResult || upgradeResult.code !== 0) {
-          return yield* new UpgradeFailedError({ stderr: upgradeFailure(m, upgradeResult) })
-        }
-        yield* Effect.logInfo("upgraded", {
-          method: m,
-          target,
-          stdout: upgradeResult.stdout,
-          stderr: upgradeResult.stderr,
+        // laintas-opencode: self-upgrade is disabled; updates come from Laintas.
+        void m
+        void target
+        return yield* new UpgradeFailedError({
+          stderr: "laintas-opencode updates are managed by Laintas; self-upgrade is disabled.",
         })
-        yield* text([process.execPath, "--version"])
       }),
       upgradeMajor: Effect.fn("Installation.upgradeMajor")(function* (m: Method) {
-        const outcome = yield* majorUpgrade(m)
-        if (outcome.code !== 0) return yield* new UpgradeFailedError({ stderr: upgradeFailure(m, outcome) })
-        yield* Effect.logInfo("upgraded major", { method: m, stdout: outcome.stdout, stderr: outcome.stderr })
+        // laintas-opencode: self-upgrade is disabled; updates come from Laintas.
+        void m
+        return yield* new UpgradeFailedError({
+          stderr: "laintas-opencode updates are managed by Laintas; self-upgrade is disabled.",
+        })
       }),
     }
 
