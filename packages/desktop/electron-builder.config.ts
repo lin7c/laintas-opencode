@@ -109,6 +109,9 @@ const getBase = (appId: string): Configuration => ({
   linux: {
     icon: `resources/icons`,
     category: "Development",
+    // fpm targets (deb/rpm) refuse to build without a maintainer, and the
+    // package.json author carries no email address.
+    maintainer: "Laintas <lin7c@laintas.com>",
     executableName: appId,
     desktop: {
       entry: {
