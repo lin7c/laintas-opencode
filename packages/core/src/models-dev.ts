@@ -232,24 +232,16 @@ const layer = Layer.effect(
 
     const [cachedGet, invalidate] = yield* Effect.cachedInvalidateWithTTL(populate, Duration.infinity)
 
-    const get = (): Effect.Effect<Record<string, Provider>> => cachedGet
+    // laintas-opencode: the models.dev vendor catalog is not used. The
+    // catalog is always empty and is never fetched; the only provider
+    // (Laintas) contributes its models through the built-in plugin.
+    const get = (): Effect.Effect<Record<string, Provider>> => Effect.succeed({})
+    void cachedGet
 
     const refresh = Effect.fn("ModelsDev.refresh")(function* (force = false) {
-      if (!force && (yield* fresh())) return
-      yield* Effect.scoped(
-        Effect.gen(function* () {
-          yield* Flock.effect(lockKey)
-          // Re-check under the lock: another process may have refreshed between
-          // our outer check and lock acquisition.
-          if (!force && (yield* fresh())) return
-          yield* fetchAndWrite()
-          yield* invalidate
-          yield* events.publish(Event.Refreshed, {})
-        }),
-      ).pipe(
-        Effect.tapCause((cause) => Effect.logError("Failed to fetch models.dev", { cause: cause })),
-        Effect.ignore,
-      )
+      // laintas-opencode: refreshing the vendor catalog is a no-op.
+      void force
+      return
     })
 
     if (!Flag.OPENCODE_DISABLE_MODELS_FETCH && !process.argv.includes("--get-yargs-completions")) {
