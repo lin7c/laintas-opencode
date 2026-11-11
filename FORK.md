@@ -55,6 +55,49 @@ must not be conflated.
 - Known leftover: the TUI wordmark in `packages/tui/src/logo.ts` is a
   block-rendered drawing of the word "opencode"; it has not been redrawn.
 
+## Desktop app
+
+`packages/desktop` is upstream OpenCode's Electron desktop app (Electron
+42, electron-builder 26), carried in this fork and rebranded on the
+`desktop` branch (Phase 1, on top of the `laintas` branch):
+
+- **Origin:** the desktop package ships in the upstream v1.19.5 tree; the
+  fork did not write a new shell. It renders the shared `@opencode-ai/app`
+  UI and talks to the same Laintas-only backend as the CLI.
+- **Identity:** app ids are `com.laintas.opencode` /
+  `com.laintas.opencode.beta` / `com.laintas.opencode.dev` (builder config,
+  the runtime `APP_IDS`/`APP_NAMES` in `src/main/index.ts`, the metainfo
+  generator, and the config tests all agree); product name is
+  `laintas-opencode`; artifacts are named
+  `laintas-opencode-desktop-<os>-<arch>.<ext>`; homepage is
+  https://opencode.laintas.com. The `opencode://` URL scheme is kept for
+  deep-link compatibility.
+- **Icons:** the Laintas Everything asterisk tile (deep green, cream
+  asterisk, amber core) replaces the upstream artwork in
+  `packages/desktop/icons/{dev,beta,prod}` for every size
+  electron-builder consumes, including `icon.icns` and `icon.ico`
+  (generated locally from `icons/laintas-asterisk.svg` with cairosvg +
+  Pillow). The Tauri-era `android/` and `ios/` subfolders still hold
+  upstream art; nothing in the Electron build reads them.
+- **Updates:** the in-app auto-updater is **disabled for v1**
+  (`UPDATER_ENABLED = false` in `src/main/constants.ts`). This repo hosts
+  CLI releases (`v*`) and desktop releases (`desktop-v*`) side by side,
+  which electron-updater's GitHub provider cannot resolve desktop updates
+  from; the builder `publish` metadata already points at
+  `lin7c/laintas-opencode` for when a dedicated desktop feed exists.
+- **Signing status:** desktop builds are currently **unsigned and not
+  notarized**. There is no Apple Developer ID or Windows code-signing
+  identity wired up yet, so macOS Gatekeeper and Windows SmartScreen will
+  warn on first launch, and the builder config's `notarize: true` will
+  fail the macOS job until credentials (or an unsigned mode) land in
+  Phase 2.
+- **Not yet done (Phase 2):** the packaged sidecar CLI is still fetched
+  from upstream npm in dev builds (`scripts/utils.ts`); rewiring it to
+  this fork's own CLI build, hiding the third-party provider-connect UI
+  that the shared app still contains, and renderer branding (splash,
+  changelog/docs URLs) are tracked in `desktop-recon.md` at the workspace
+  root.
+
 ## How to build
 
 Requires [Bun](https://bun.sh).
