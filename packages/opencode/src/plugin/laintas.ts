@@ -51,13 +51,48 @@ async function pollDeviceLogin(start: DeviceStart): Promise<string | null> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-async function fetchModelIds(access: string): Promise<string[]> {
+type FacadeModel = {
+  id: string
+  // Badge metadata the /v1 facade passes through from the gateway's
+  // per-model capability flags (see laintas_v1_facade.py).
+  laintas?: { tier?: string; selfHosted?: boolean; ownKey?: boolean }
+}
+
+// The badge the model picker shows for a model, mirroring the Laintas web
+// picker: models on our own GPUs are tagged "laintas-model", a model served
+// by the caller's own activated key is tagged "Activated", and third-party
+// models carry their tier (T0-T5). Anything else gets no badge.
+function modelBadge(meta: FacadeModel["laintas"]): string | undefined {
+  if (!meta) return undefined
+  if (meta.selfHosted) return "laintas-model"
+  if (meta.ownKey) return "Activated"
+  return meta.tier || undefined
+}
+
+async function fetchModels(access: string): Promise<FacadeModel[]> {
   const resp = await fetch(`${API_BASE}/models`, {
     headers: { Authorization: `Bearer ${access}` },
   })
   if (!resp.ok) return []
-  const body = (await resp.json()) as { data?: Array<{ id: string }> }
-  return (body.data || []).map((m) => m?.id).filter(Boolean) as string[]
+  const body = (await resp.json()) as { data?: FacadeModel[] }
+  return (body.data || []).filter((m) => m?.id)
+}
+
+// Model options ride to the TUI inside the model record, and the AI SDK
+// spreads provider options into the request body - the picker's badge is
+// display metadata, so it is removed from outgoing JSON bodies here.
+function stripBadge(body: unknown): unknown {
+  if (typeof body !== "string" || !body.includes("laintasBadge")) return body
+  try {
+    const parsed = JSON.parse(body)
+    if (parsed && typeof parsed === "object" && "laintasBadge" in parsed) {
+      delete parsed.laintasBadge
+      return JSON.stringify(parsed)
+    }
+  } catch {
+    // not JSON: forward untouched
+  }
+  return body
 }
 
 function storedAccessToken(): string | null {
@@ -82,10 +117,13 @@ export async function LaintasAuthPlugin(): Promise<Hooks> {
       try {
         const access = storedAccessToken()
         if (!access) return
-        const ids = await fetchModelIds(access)
-        if (!ids.length) return
-        const models: Record<string, { name: string }> = {}
-        for (const id of ids) models[id] = { name: id }
+        const entries = await fetchModels(access)
+        if (!entries.length) return
+        const models: Record<string, { name: string; options?: { laintasBadge: string } }> = {}
+        for (const entry of entries) {
+          const badge = modelBadge(entry.laintas)
+          models[entry.id] = badge ? { name: entry.id, options: { laintasBadge: badge } } : { name: entry.id }
+        }
         const providers = ((cfg as any).provider ||= {})
         const existing = providers[PROVIDER_ID] || {}
         providers[PROVIDER_ID] = {
@@ -117,7 +155,7 @@ export async function LaintasAuthPlugin(): Promise<Hooks> {
               headers.set("Authorization", `Bearer ${fresh.access}`)
             }
             headers.delete("api-key")
-            return fetch(input, { ...init, headers })
+            return fetch(input, { ...init, headers, body: stripBadge(init?.body) })
           },
         }
       },
@@ -164,14 +202,10 @@ export async function LaintasAuthPlugin(): Promise<Hooks> {
         const auth = ctx.auth
         if (!auth || auth.type !== "oauth") return {}
         try {
-          const resp = await fetch(`${API_BASE}/models`, {
-            headers: { Authorization: `Bearer ${auth.access}` },
-          })
-          if (!resp.ok) return {}
-          const body = (await resp.json()) as { data?: Array<{ id: string }> }
+          const entries = await fetchModels(auth.access)
           const models: Record<string, any> = {}
-          for (const entry of body.data || []) {
-            if (!entry?.id) continue
+          for (const entry of entries) {
+            const badge = modelBadge(entry.laintas)
             models[entry.id] = {
               id: entry.id,
               providerID: PROVIDER_ID,
@@ -191,7 +225,7 @@ export async function LaintasAuthPlugin(): Promise<Hooks> {
               cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
               limit: { context: 128000, output: 8192 },
               status: "active",
-              options: {},
+              options: badge ? { laintasBadge: badge } : {},
               headers: {},
               release_date: "",
             }
