@@ -35,6 +35,13 @@ const channel = (() => {
   return "dev"
 })()
 
+// laintas-opencode desktop v1 ships unsigned: there is no Apple Developer ID
+// and no Windows code-signing identity yet (the Windows sign hook in
+// script/sign-windows.ps1 already skips itself when no Azure signing
+// configuration exists). Notarization and DMG signing only turn on when
+// LAINTAS_DESKTOP_SIGN=1 is set in the build environment.
+const sign = process.env.LAINTAS_DESKTOP_SIGN === "1"
+
 const APP_IDS = {
   dev: "com.laintas.opencode.dev",
   beta: "com.laintas.opencode.beta",
@@ -57,15 +64,11 @@ const getBase = (appId: string): Configuration => ({
   },
   files: ["out/**/*", "resources/**/*", "!resources/opencode-cli*"],
   extraResources: [
-    ...(channel === "dev"
-      ? [
-          {
-            from: "resources/",
-            to: "",
-            filter: ["opencode-cli*"],
-          },
-        ]
-      : []),
+    {
+      from: "resources/",
+      to: "",
+      filter: ["opencode-cli*"],
+    },
     {
       from: "native/",
       to: "native/",
@@ -79,11 +82,11 @@ const getBase = (appId: string): Configuration => ({
     gatekeeperAssess: false,
     entitlements: "resources/entitlements.plist",
     entitlementsInherit: "resources/entitlements.plist",
-    notarize: true,
+    notarize: sign,
     target: ["dmg", "zip"],
   },
   dmg: {
-    sign: true,
+    sign,
   },
   protocols: {
     name: "laintas-opencode",

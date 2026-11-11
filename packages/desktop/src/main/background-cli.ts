@@ -9,7 +9,12 @@ import { app } from "electron"
 const execFileAsync = promisify(execFile)
 const root = dirname(fileURLToPath(import.meta.url))
 const stateHome = process.env.XDG_STATE_HOME
-const desktopStateNames = ["ai.opencode.desktop.dev", "ai.opencode.desktop.beta", "ai.opencode.desktop"]
+// Candidate state homes are keyed by desktop app id. Only this fork's own
+// app ids are listed: adopting a background daemon that an upstream OpenCode
+// install started would silently connect this app to a non-Laintas backend,
+// and this path never reads a stopped daemon's state directory, so the
+// upstream ids would not migrate any user data either.
+const desktopStateNames = ["com.laintas.opencode.dev", "com.laintas.opencode.beta", "com.laintas.opencode"]
 
 type Logger = {
   log(message: string, meta?: Record<string, unknown>): void

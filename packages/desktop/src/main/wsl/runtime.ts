@@ -265,12 +265,20 @@ export async function installWslDistro(name: string, opts?: RunWslOptions) {
 }
 
 export async function installWslOpencode(version: string, distro: string, opts?: RunWslOptions) {
+  // laintas-opencode: the fork's CLI is published on its own GitHub releases,
+  // and each desktop release carries the linux-x64 CLI built and
+  // version-stamped in the same run, so it satisfies the strict version
+  // check in servers.ts. The binary lands at ~/.opencode/bin/opencode, the
+  // path resolveWslOpencode probes for.
+  const url = `https://github.com/lin7c/laintas-opencode/releases/download/desktop-v${version}/laintas-opencode-linux-x64-baseline`
+  const script = [
+    `mkdir -p "$HOME/.opencode/bin"`,
+    `curl -fsSL ${url} -o "$HOME/.opencode/bin/opencode"`,
+    `chmod +x "$HOME/.opencode/bin/opencode"`,
+  ].join(" && ")
   return runInteractiveCommand(
     resolveSystem32Command("wsl.exe"),
-    wslArgs(
-      ["bash", "-lc", `curl -fsSL https://opencode.ai/install | bash -s -- --version ${shellEscape(version)}`],
-      distro,
-    ),
+    wslArgs(["bash", "-lc", script], distro),
     withTimeout(opts, DEFAULT_WSL_INSTALL_TIMEOUT_MS),
     DEFAULT_WSL_INSTALL_TIMEOUT_MS,
   )
