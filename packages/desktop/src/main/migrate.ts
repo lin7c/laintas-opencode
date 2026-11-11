@@ -21,14 +21,17 @@ function tauriDir(id: string) {
   }
 }
 
-// The Tauri app identifier changes between dev/beta/prod builds.
+// The Tauri app identifier changes between dev/beta/prod builds. The fork
+// never shipped a Tauri build, so these point at the Laintas ids: no such
+// directories exist, the migration stays a no-op, and upstream OpenCode
+// Tauri data is never imported into laintas-opencode.
 const TAURI_APP_IDS: Record<string, string> = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
+  dev: "com.laintas.opencode.dev",
+  beta: "com.laintas.opencode.beta",
+  prod: "com.laintas.opencode",
 }
 function tauriAppId() {
-  return app.isPackaged ? TAURI_APP_IDS[CHANNEL] : "ai.opencode.desktop.dev"
+  return app.isPackaged ? TAURI_APP_IDS[CHANNEL] : "com.laintas.opencode.dev"
 }
 
 // Migrate a single Tauri .dat file into the corresponding electron-store.
