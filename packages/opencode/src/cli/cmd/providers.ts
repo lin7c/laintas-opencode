@@ -36,7 +36,7 @@ const cliTry = <Value>(message: string, fn: () => PromiseLike<Value>) =>
     catch: (error) => new CliError({ message: message + errorMessage(error) }),
   })
 
-const handlePluginAuth = Effect.fn("Cli.providers.pluginAuth")(function* (
+export const handlePluginAuth = Effect.fn("Cli.providers.pluginAuth")(function* (
   plugin: { auth: PluginAuth },
   provider: string,
   methodName?: string,

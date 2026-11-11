@@ -102,6 +102,53 @@ async function input(value?: string) {
   return piped + "\n" + value
 }
 
+// laintas-opencode: Laintas is the only provider, so an interactive TUI
+// launch without a stored Laintas credential first runs the same device-code
+// sign-in as `auth login`, then continues into the TUI either way. The
+// sign-in is best-effort: expiry or any failure still opens the TUI,
+// where /connect remains available.
+async function promptLaintasLogin() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return
+  const { AppRuntime } = await import("@/effect/app-runtime")
+  const { Effect } = await import("effect")
+  const { Auth } = await import("@/auth")
+  const { LaintasAuthPlugin } = await import("@/plugin/laintas")
+  const { handlePluginAuth } = await import("./providers")
+  const { log } = await import("../effect/prompt")
+  const { errorMessage } = await import("@/util/error")
+  await AppRuntime.runPromise(
+    Effect.gen(function* () {
+      const auth = yield* Auth.Service
+      if (yield* Effect.orDie(auth.get("laintas"))) return
+      const hooks = yield* Effect.promise(() => LaintasAuthPlugin())
+      if (!hooks.auth) return
+      // A delivered SIGINT abandons the wait instead of blocking the TUI
+      // launch; the device polling promise keeps running detached after
+      // the interrupt and its result is discarded. (A terminal Ctrl+C
+      // during the wait never becomes SIGINT: the prompt layer reads it
+      // as a keypress and exits cleanly, exactly like `auth login`.)
+      const interrupted = Effect.callback<"interrupted">((resume) => {
+        const onSigint = () => resume(Effect.succeed("interrupted" as const))
+        process.once("SIGINT", onSigint)
+        return Effect.sync(() => process.removeListener("SIGINT", onSigint))
+      })
+      const result = yield* Effect.raceFirst(
+        handlePluginAuth({ auth: hooks.auth }, "laintas").pipe(
+          Effect.as("done" as const),
+          Effect.catch((error) =>
+            log.warn("Laintas sign-in did not complete: " + errorMessage(error)).pipe(Effect.as("done" as const)),
+          ),
+        ),
+        interrupted,
+      )
+      if (result === "interrupted") {
+        yield* log.info("Laintas sign-in skipped. You can sign in later from the TUI with /connect.")
+      }
+    }),
+    // A failed sign-in prompt must never block the TUI.
+  ).catch(() => {})
+}
+
 export function resolveThreadDirectory(project?: string, envPWD = process.env.PWD, cwd = process.cwd()) {
   const root = Filesystem.resolve(envPWD ?? cwd)
   if (project) return Filesystem.resolve(path.isAbsolute(project) ? project : path.join(root, project))
@@ -187,6 +234,8 @@ export const TuiThreadCommand = cmd({
       return
     }
     const noReplay = args.replay === false || args.noReplay === true
+
+    await promptLaintasLogin()
 
     if (args.mini) {
       const network = ["--port", "--hostname", "--mdns", "--no-mdns", "--mdns-domain", "--cors"].find((option) =>
