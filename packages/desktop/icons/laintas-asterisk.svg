@@ -1,0 +1,5 @@
+<svg viewBox="0 0 48 48" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Laintas Everything</title>
+<rect width="48" height="48" rx="11" fill="#1d3b2a"/>
+<g transform="translate(6.7 6.7) scale(0.72)"><g transform="skewX(-6)"><g stroke="#f4f6ee" stroke-width="5.4" stroke-linecap="round"><line x1="25" y1="8" x2="25" y2="40"/><line x1="12.2" y1="15.6" x2="37.8" y2="32.4"/><line x1="37.8" y1="15.6" x2="12.2" y2="32.4"/></g></g><circle cx="24" cy="24" r="5.2" fill="#ffc24d"/></g>
+</svg>
